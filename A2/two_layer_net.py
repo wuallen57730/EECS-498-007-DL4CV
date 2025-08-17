@@ -2,6 +2,7 @@
 Implements a two-layer Neural Network classifier in PyTorch.
 WARNING: you SHOULD NOT use ".to()" or ".cuda()" in each implementation block.
 """
+from math import e
 import torch
 import random
 import statistics
@@ -79,28 +80,21 @@ class TwoLayerNet(object):
 
 def nn_forward_pass(params, X):
     """
-    The first stage of our neural network implementation: Run the forward pass
-    of the network to compute the hidden layer features and classification
-    scores. The network architecture should be:
+    我們的神經網絡實現的第一階段：執行網絡的向前傳遞，計算隱藏層特徵和分類分數
+    網絡架構應為： 全連接層 -> ReLU（隱藏層） -> 全連接層（分數）
+    作為練習，這次我們不允許使用 torch.relu 和 torch.nn 操作（從作業3開始可以使用）。
+    - 輸入：
+    params：一個儲存模型權重的 PyTorch 張量字典，應包含以下鍵和形狀：
+    W1：第一層weight；形狀為 (D, H)
+    b1：第一層bias；形狀為 (H,)
+    W2：第二層weight；形狀為 (H, C)
+    b2：第二層bias；形狀為 (C,)
+    X：形狀為 (N, D) 的輸入數據。每個 X[i] 是一個訓練樣本。
 
-    FC layer -> ReLU (hidden) -> FC layer (scores)
+    返回一個tuple，包含：
 
-    As a practice, we will NOT allow to use torch.relu and torch.nn ops
-    just for this time (you can use it from A3).
-
-    Inputs:
-    - params: a dictionary of PyTorch Tensor that store the weights of a model.
-      It should have following keys with shape
-          W1: First layer weights; has shape (D, H)
-          b1: First layer biases; has shape (H,)
-          W2: Second layer weights; has shape (H, C)
-          b2: Second layer biases; has shape (C,)
-    - X: Input data of shape (N, D). Each X[i] is a training sample.
-
-    Returns a tuple of:
-    - scores: Tensor of shape (N, C) giving the classification scores for X
-    - hidden: Tensor of shape (N, H) giving the hidden layer representation
-      for each input value (after the ReLU).
+    scores：形狀為 (N, C) 的張量，表示 X 的分類分數
+    hidden：形狀為 (N, H) 的張量，表示每個輸入值經過 ReLU 後的隱藏層表示
     """
     # Unpack variables from the params dictionary
     W1, b1 = params['W1'], params['b1']
@@ -116,7 +110,11 @@ def nn_forward_pass(params, X):
     # shape (N, C).                                                            #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    Z1 = X @ W1 + b1
+
+    hidden = Z1.clamp(min=0)  # 使用 clamp 實現 ReLU，替代 torch.relu
+
+    scores = hidden @ W2 + b2  # 形狀: (N, C)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -124,35 +122,27 @@ def nn_forward_pass(params, X):
     return scores, hidden
 
 
-def nn_forward_backward(params, X, y=None, reg=0.0):
+def nn_forward_backward(params, X, y = None, reg=0.0):
     """
-    Compute the loss and gradients for a two layer fully connected neural
-    network. When you implement loss and gradient, please don't forget to
-    scale the losses/gradients by the batch size.
+    計算雙層全連接神經網絡的損失和梯度。在實現損失和梯度時，請不要忘記按批次大小對損失/梯度進行縮放。
+    輸入：前兩個參數（params, X）與 nn_forward_pass 相同
 
-    Inputs: First two parameters (params, X) are same as nn_forward_pass
-    - params: a dictionary of PyTorch Tensor that store the weights of a model.
-      It should have following keys with shape
-          W1: First layer weights; has shape (D, H)
-          b1: First layer biases; has shape (H,)
-          W2: Second layer weights; has shape (H, C)
-          b2: Second layer biases; has shape (C,)
-    - X: Input data of shape (N, D). Each X[i] is a training sample.
-    - y: Vector of training labels. y[i] is the label for X[i], and each y[i] is
-      an integer in the range 0 <= y[i] < C. This parameter is optional; if it
-      is not passed then we only return scores, and if it is passed then we
-      instead return the loss and gradients.
-    - reg: Regularization strength.
+    params：一個儲存模型權重的 PyTorch 張量字典，應包含以下鍵和形狀：
+    - W1：第一層權重；形狀為 (D, H)
+    - b1：第一層偏置；形狀為 (H,)
+    - W2：第二層權重；形狀為 (H, C)
+    - b2：第二層偏置；形狀為 (C,)
+    - X：形狀為 (N, D) 的輸入數據。每個 X[i] 是一個訓練樣本
+    - y：訓練標籤向量。y[i] 是 X[i] 的標籤，每個 y[i] 是範圍在 0 <= y[i] < C 的整數
+      此參數是可選的；如果未傳入，則僅返回分數；如果傳入，則返回損失和梯度
+    - reg：正則化強度
 
-    Returns:
-    If y is None, return a tensor scores of shape (N, C) where scores[i, c] is
-    the score for class c on input X[i].
+    返回：
+    如果 y 為 None，返回形狀為 (N, C) 的張量 scores，其中 scores[i, c] 是輸入 X[i] 在類別 c 上的分數。
+    如果 y 不為 None，則返回一個元組，包含：
 
-    If y is not None, instead return a tuple of:
-    - loss: Loss (data loss and regularization loss) for this batch of training
-      samples.
-    - grads: Dictionary mapping parameter names to gradients of those parameters
-      with respect to the loss function; has the same keys as self.params.
+    - loss：此批次訓練樣本的損失（數據損失和正則化損失）。
+    - grads：將參數名稱映射到相對於損失函數的參數梯度的字典，與 self.params 具有相同的鍵。
     """
     # Unpack variables from the params dictionary
     W1, b1 = params['W1'], params['b1']
@@ -167,16 +157,22 @@ def nn_forward_backward(params, X, y=None, reg=0.0):
     # Compute the loss
     loss = None
     ############################################################################
-    # TODO: Compute the loss, based on the results from nn_forward_pass.       #
-    # This should include both the data loss and L2 regularization for W1 and  #
-    # W2. Store the result in the variable loss, which should be a scalar. Use #
-    # the Softmax classifier loss. When you implment the regularization over W,#
-    # please DO NOT multiply the regularization term by 1/2 (no coefficient).  #
-    # If you are not careful here, it is easy to run into numeric instability  #
-    # (Check Numeric Stability in http://cs231n.github.io/linear-classify/).   #
+    # TODO: 根據 nn_forward_pass 的結果計算損失。這應包括數據損失和 W1 與 W2 的 L2 正則#
+    # 化。將結果儲存在變數 loss 中，loss 應為一個標量。使用 Softmax 分類器損失          #
+    # 在實現 W 的正則化時，請不要將正則化項乘以 1/2(無係數)                           #
+    # 如果不小心，這裡很容易遇到數值不穩定問題                                        #
+    #（請參考 http://cs231n.github.io/linear-classify/ 中的數值穩定性）。           #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    num_train = X.shape[0]
+    scores -= scores.max(dim=1, keepdim=True).values
+    scores = torch.exp(scores)
+    scores = scores/scores.sum(dim=1, keepdim=True)
+
+    loss = (-torch.log(scores[torch.arange(num_train), y])).mean()
+
+    loss += reg * torch.sum(W1*W1)
+    loss += reg * torch.sum(W2*W2)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -189,8 +185,21 @@ def nn_forward_backward(params, X, y=None, reg=0.0):
     # For example, grads['W1'] should store the gradient on W1, and be a      #
     # tensor of same size                                                     #
     ###########################################################################
-    # Replace "pass" statement with your code
-    pass
+    # 計算backward pass
+    
+    e_y = torch.zeros_like(scores)
+    e_y[torch.arange(num_train), y] = 1
+    # \gradient L_i / \grafdient S_i = P_i - e_{y_i}
+    dscores = scores - e_y
+
+    grads['b2'] = dscores.sum(dim=0)/num_train
+    grads['W2'] = (h1.t() @ dscores) / num_train + 2 * reg * W2
+
+    dh1 = dscores @ W2.t()
+    drelu = (h1 > 0).to(X.dtype)
+
+    grads['b1'] = (dh1 * drelu).sum(dim=0) / num_train
+    grads['W1'] = (X.t() @ (dh1 * drelu)) / num_train + 2 * reg * W1
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -260,7 +269,9 @@ def nn_train(params, loss_func, pred_func, X, y, X_val, y_val,
     # stored in the grads dictionary defined above.                         #
     #########################################################################
     # Replace "pass" statement with your code
-    pass
+    for param_name, grad in grads.items():
+          param = params[param_name]
+          param -= learning_rate * grad
     #########################################################################
     #                             END OF YOUR CODE                          #
     #########################################################################
@@ -290,25 +301,19 @@ def nn_train(params, loss_func, pred_func, X, y, X_val, y_val,
 
 def nn_predict(params, loss_func, X):
   """
-  Use the trained weights of this two-layer network to predict labels for
-  data points. For each data point we predict scores for each of the C
-  classes, and assign each data point to the class with the highest score.
+  使用這個雙層網絡的訓練權重來預測數據點的標籤。對於每個數據點，我們預測 C 個類別的得分，並將每個數據點分配到得分最高的類別。
+  輸入：
+  params：一個儲存模型權重的 PyTorch Tensor 字典，應包含以下鍵和形狀：
+  - W1：第一層權重，形狀為 (D, H)
+  - b1：第一層偏置，形狀為 (H,)
+  - W2：第二層權重，形狀為 (H, C)
+  - b2：第二層偏置，形狀為 (C,)
+  - loss_func：一個計算損失和梯度的損失函數
+  - X：一個形狀為 (N, D) 的 PyTorch Tensor，表示 N 個 D 維數據點進行分類。
 
-  Inputs:
-  - params: a dictionary of PyTorch Tensor that store the weights of a model.
-    It should have following keys with shape
-        W1: First layer weights; has shape (D, H)
-        b1: First layer biases; has shape (H,)
-        W2: Second layer weights; has shape (H, C)
-        b2: Second layer biases; has shape (C,)
-  - loss_func: a loss function that computes the loss and the gradients
-  - X: A PyTorch tensor of shape (N, D) giving N D-dimensional data points to
-    classify.
-
-  Returns:
-  - y_pred: A PyTorch tensor of shape (N,) giving predicted labels for each of
-    the elements of X. For all i, y_pred[i] = c means that X[i] is predicted
-    to have class c, where 0 <= c < C.
+  return：
+  - y_pred：一個形狀為 (N,) 的 PyTorch Tensor，表示 X 中每個元素的預測標籤
+  對於所有 i，y_pred[i] = c 表示 X[i] 被預測為類別 c，其中 0 <= c < C
   """
   y_pred = None
 
@@ -316,7 +321,8 @@ def nn_predict(params, loss_func, X):
   # TODO: Implement this function; it should be VERY simple!                #
   ###########################################################################
   # Replace "pass" statement with your code
-  pass
+  scores = loss_func(params, X)
+  y_pred = scores.argmax(dim=1)
   ###########################################################################
   #                              END OF YOUR CODE                           #
   ###########################################################################

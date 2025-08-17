@@ -1,4 +1,4 @@
-# EECS 498-007: Deep Learning for Computer Vision (Fall 2020)
+# UMich EECS 498-007 / 598-005 Deep Learning for Computer Vision (Fall 2020)
 
 This repository contains my personal implementations of the assignments for the EECS 498-007 course "Deep Learning for Computer Vision" taught at the University of Michigan in Fall 2020.
 
