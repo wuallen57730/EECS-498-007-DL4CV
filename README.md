@@ -3,7 +3,7 @@
 This repository contains my personal implementations of the assignments for the EECS 498-007 course "Deep Learning for Computer Vision" taught at the University of Michigan in Fall 2020.
 
 ## Assignments
-Below is a list of all assignments with brief descriptions, objectives, and key topics. Each links to the official assignment page on the course website for full details.
+Below is a list of all assignments with links and key topics. Each links to the official assignment page on the course website for full details.
 
 ### A1: PyTorch Basics and k-Nearest Neighbors Classifier
 - **Official Page**: [Assignment 1](https://web.eecs.umich.edu/~justincj/teaching/eecs498/FA2020/assignment1.html)
